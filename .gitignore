@@ -1,3 +1,5 @@
 Data/
 *.dbn.zst
 *.dbn
+apple_data.parquet
+microsoft_data.parquet
