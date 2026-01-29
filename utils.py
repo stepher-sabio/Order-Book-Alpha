@@ -1,0 +1,265 @@
+"""
+utils.py - Shared utilities for order book modeling
+"""
+
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+import pickle
+from pathlib import Path
+
+# ============================================
+# Constants
+# ============================================
+FEATURE_COLS = [
+    'spread_bps', 'mid_price_usd', 'spread_pct',
+    'imbalance_0', 'imbalance_1', 'imbalance_2', 'cumulative_imbalance',
+    'momentum_10', 'momentum_20', 'momentum_50',
+    'volatility_10', 'volatility_20', 'volatility_50',
+    'total_volume_top'
+]
+
+TARGET_HORIZONS = ['return_50ms', 'return_100ms', 'return_200ms', 'return_500ms']
+
+# ============================================
+# Data Loading
+# ============================================
+def load_data(filepath='featured_AAPL.parquet', sample_size=None):
+    """
+    Load featured dataset
+    
+    Args:
+        filepath: Path to parquet file
+        sample_size: If provided, randomly sample this many rows (for quick testing)
+    
+    Returns:
+        DataFrame
+    """
+    print(f"Loading data from: {filepath}")
+    df = pd.read_parquet(filepath)
+    
+    if sample_size and sample_size < len(df):
+        print(f"Sampling {sample_size:,} rows for quick testing...")
+        df = df.sample(n=sample_size, random_state=42).sort_index()
+    
+    print(f"Loaded {len(df):,} samples")
+    return df
+
+# ============================================
+# Train/Test Split
+# ============================================
+def time_based_split(X, y, test_size=0.2):
+    """
+    Split data by time (no shuffling!)
+    
+    Args:
+        X: Features
+        y: Target
+        test_size: Fraction for test set (most recent data)
+    
+    Returns:
+        X_train, X_test, y_train, y_test
+    """
+    split_idx = int(len(X) * (1 - test_size))
+    
+    X_train, X_test = X[:split_idx], X[split_idx:]
+    y_train, y_test = y[:split_idx], y[split_idx:]
+    
+    print(f"\n=== Time-Based Split ===")
+    print(f"Train: {len(X_train):,} samples ({len(X_train)/len(X)*100:.1f}%)")
+    print(f"Test:  {len(X_test):,} samples ({len(X_test)/len(X)*100:.1f}%)")
+    
+    return X_train, X_test, y_train, y_test
+
+# ============================================
+# Evaluation Metrics
+# ============================================
+def evaluate_model(y_true, y_pred, set_name='Test'):
+    """
+    Calculate comprehensive evaluation metrics
+    
+    Args:
+        y_true: Actual values
+        y_pred: Predicted values
+        set_name: Name for display (e.g., 'Train', 'Test')
+    
+    Returns:
+        Dictionary of metrics
+    """
+    r2 = r2_score(y_true, y_pred)
+    mae = mean_absolute_error(y_true, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    
+    # Convert to basis points for interpretability
+    mae_bps = mae * 10000
+    rmse_bps = rmse * 10000
+    
+    # Direction accuracy (sign prediction)
+    direction_acc = np.mean(np.sign(y_true) == np.sign(y_pred))
+    
+    # Correlation
+    correlation = np.corrcoef(y_true, y_pred)[0, 1]
+    
+    metrics = {
+        f'{set_name}_r2': r2,
+        f'{set_name}_mae_bps': mae_bps,
+        f'{set_name}_rmse_bps': rmse_bps,
+        f'{set_name}_direction_acc': direction_acc,
+        f'{set_name}_correlation': correlation
+    }
+    
+    return metrics
+
+def print_metrics(metrics, set_name='Test'):
+    """Pretty print metrics"""
+    # Normalize set_name to lowercase for key lookup
+    set_name_lower = set_name.lower()
+    
+    print(f"\n{set_name} Metrics:")
+    print(f"  R²:              {metrics[f'{set_name_lower}_r2']*100:.4f}%")
+    print(f"  MAE:             {metrics[f'{set_name_lower}_mae_bps']:.3f} bps")
+    print(f"  RMSE:            {metrics[f'{set_name_lower}_rmse_bps']:.3f} bps")
+    print(f"  Direction Acc:   {metrics[f'{set_name_lower}_direction_acc']*100:.2f}%")
+    print(f"  Correlation:     {metrics[f'{set_name_lower}_correlation']:.4f}")
+
+# ============================================
+# Cross-Validation
+# ============================================
+def time_series_cv(pipeline, X, y, n_splits=3):
+    """
+    Perform time series cross-validation
+    
+    Args:
+        pipeline: Sklearn pipeline
+        X: Features
+        y: Target
+        n_splits: Number of CV folds
+    
+    Returns:
+        List of R² scores for each fold
+    """
+    tscv = TimeSeriesSplit(n_splits=n_splits)
+    cv_scores = []
+    
+    print(f"\n=== Time Series Cross-Validation ({n_splits} folds) ===")
+    
+    for fold, (train_idx, val_idx) in enumerate(tscv.split(X), 1):
+        X_train_cv, X_val_cv = X[train_idx], X[val_idx]
+        y_train_cv, y_val_cv = y[train_idx], y[val_idx]
+        
+        pipeline.fit(X_train_cv, y_train_cv)
+        y_pred_cv = pipeline.predict(X_val_cv)
+        
+        r2 = r2_score(y_val_cv, y_pred_cv)
+        cv_scores.append(r2)
+        
+        print(f"Fold {fold}: R² = {r2*100:.4f}%")
+    
+    mean_r2 = np.mean(cv_scores)
+    std_r2 = np.std(cv_scores)
+    
+    print(f"\nCross-Validation R²: {mean_r2*100:.4f}% ± {std_r2*100:.4f}%")
+    
+    return cv_scores
+
+# ============================================
+# Model Persistence
+# ============================================
+def save_model(model, filepath):
+    """Save model to disk"""
+    Path(filepath).parent.mkdir(parents=True, exist_ok=True)
+    with open(filepath, 'wb') as f:
+        pickle.dump(model, f)
+    print(f"✅ Model saved to: {filepath}")
+
+def load_model(filepath):
+    """Load model from disk"""
+    with open(filepath, 'rb') as f:
+        model = pickle.load(f)
+    print(f"✅ Model loaded from: {filepath}")
+    return model
+
+# ============================================
+# Results Management
+# ============================================
+def save_results(results_dict, filepath):
+    """Save results to CSV"""
+    Path(filepath).parent.mkdir(parents=True, exist_ok=True)
+    
+    df = pd.DataFrame([results_dict])
+    
+    # Append if file exists, otherwise create new
+    if Path(filepath).exists():
+        existing = pd.read_csv(filepath)
+        df = pd.concat([existing, df], ignore_index=True)
+    
+    df.to_csv(filepath, index=False)
+    print(f"✅ Results saved to: {filepath}")
+
+def load_results(filepath):
+    """Load results from CSV"""
+    if Path(filepath).exists():
+        return pd.read_csv(filepath)
+    else:
+        print(f"⚠️  Results file not found: {filepath}")
+        return None
+
+# ============================================
+# Feature Importance
+# ============================================
+def get_feature_importance(model, feature_names, top_n=10):
+    """
+    Extract feature importance from model
+    
+    Works for:
+    - Linear models (coefficients)
+    - Tree-based models (feature_importances_)
+    
+    Args:
+        model: Trained model
+        feature_names: List of feature names
+        top_n: Number of top features to return
+    
+    Returns:
+        DataFrame with feature importance
+    """
+    if hasattr(model, 'coef_'):
+        # Linear model
+        importance = np.abs(model.coef_)
+        importance_type = 'abs_coefficient'
+    elif hasattr(model, 'feature_importances_'):
+        # Tree-based model
+        importance = model.feature_importances_
+        importance_type = 'importance'
+    else:
+        print("⚠️  Model does not have feature importance")
+        return None
+    
+    df = pd.DataFrame({
+        'feature': feature_names,
+        importance_type: importance
+    }).sort_values(importance_type, ascending=False)
+    
+    print(f"\nTop {top_n} Features:")
+    print(df.head(top_n).to_string(index=False))
+    
+    return df
+
+# ============================================
+# Helpers
+# ============================================
+def format_duration(seconds):
+    """Format seconds into readable duration"""
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    elif seconds < 3600:
+        return f"{seconds/60:.1f}m"
+    else:
+        return f"{seconds/3600:.2f}h"
+
+def print_section(title):
+    """Print formatted section header"""
+    print("\n" + "="*60)
+    print(title.center(60))
+    print("="*60)
