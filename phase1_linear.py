@@ -44,7 +44,7 @@ USE_CV = False  # Set to True to enable CV (slower but more robust)
 CV_SPLITS = 3
 
 # Target horizon to focus on
-TARGET_HORIZON = 'return_500ms'  
+TARGET_HORIZON = 'return_200ms'  
 
 # ============================================
 # Main Training Function
