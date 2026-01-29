@@ -1,7 +1,7 @@
 import pyarrow.parquet as pq
 
 # Read in batches
-parquet_file = pq.ParquetFile('microsoft_data.parquet')
+parquet_file = pq.ParquetFile('cleaned_data/microsoft_data.parquet')
 
 for i in range(parquet_file.num_row_groups):
     # Read one row group at a time

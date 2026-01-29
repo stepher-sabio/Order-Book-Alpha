@@ -1,7 +1,8 @@
 import pyarrow.parquet as pq
+import pandas as pd
 
 # Read in batches
-parquet_file = pq.ParquetFile('apple_data.parquet')
+parquet_file = pq.ParquetFile('cleaned_data/apple_data.parquet')
 
 for i in range(parquet_file.num_row_groups):
     # Read one row group at a time
@@ -14,3 +15,9 @@ for i in range(parquet_file.num_row_groups):
     if i == 0:  # Just look at first chunk for now
         print(df_chunk.head())
         break
+
+# df = pd.read_parquet("apple_data.parquet")
+# # print(df.head())
+# # print(df.columns)
+
+# (df["bid_px_0"] < df["ask_px_0"]).all()
