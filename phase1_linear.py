@@ -196,8 +196,9 @@ def train_linear_models():
     results_path = RESULTS_DIR / 'phase1_linear_results.csv'
     save_results(all_results[0], results_path)  # Save first result
     
-    for result in all_results[1:]:  # Append rest
-        save_results(result, results_path)
+    # OVERWRITE (not append) - save all results at once
+    results_df.to_csv(results_path, index=False)
+    print(f"✅ Results saved to {results_path}")
     
     # ============================================
     # Summary Comparison

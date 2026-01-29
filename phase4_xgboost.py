@@ -114,7 +114,7 @@ def train_xgboost():
         print("Install with: pip install xgboost")
         return None
     
-    print_section("PHASE 2: XGBOOST (FAST ALTERNATIVE)")
+    print_section("PHASE 4: XGBOOST (FAST ALTERNATIVE)")
     
     # ============================================
     # Load Data
@@ -218,23 +218,39 @@ def train_xgboost():
         val_metrics = evaluate_model(y_val, y_val_pred, 'val')
         test_metrics = evaluate_model(y_test, y_test_pred, 'test')
         
+        # Calculate directional accuracy
+        train_dir_acc = np.mean(np.sign(y_train) == np.sign(y_train_pred)) * 100
+        val_dir_acc = np.mean(np.sign(y_val) == np.sign(y_val_pred)) * 100
+        test_dir_acc = np.mean(np.sign(y_test) == np.sign(y_test_pred)) * 100
+        
+        train_metrics['train_directional_accuracy'] = train_dir_acc
+        val_metrics['val_directional_accuracy'] = val_dir_acc
+        test_metrics['test_directional_accuracy'] = test_dir_acc
+        
         print_metrics(train_metrics, 'Train')
         print_metrics(val_metrics, 'Val')  # Match evaluate_model naming
         print_metrics(test_metrics, 'Test')
+        
+        print(f"\n--- Directional Accuracy ---")
+        print(f"Train: {train_dir_acc:.2f}%")
+        print(f"Val:   {val_dir_acc:.2f}%")
+        print(f"Test:  {test_dir_acc:.2f}%")
         
         # ============================================
         # Compare to Phase 1
         # ============================================
         improvement = test_metrics['test_r2'] - baseline_r2
-        pct_improvement = (improvement / baseline_r2) * 100
+        pct_improvement = (improvement / baseline_r2) * 100 if baseline_r2 != 0 else 0
         
-        print(f"\n--- vs Phase 1 Baseline ---")
+        print(f"\n--- vs Phase 1 Linear Baseline ---")
         print(f"Phase 1 R²:  {baseline_r2*100:.4f}%")
-        print(f"XGBoost R²:  {test_metrics['test_r2']*100:.4f}%")
+        print(f"Phase 4 R²:  {test_metrics['test_r2']*100:.4f}%")
         print(f"Improvement: {improvement*100:+.4f}% ({pct_improvement:+.1f}%)")
         
         if test_metrics['test_r2'] > baseline_r2:
             print("✅ XGBoost beats linear baseline!")
+        else:
+            print("⚠️  XGBoost didn't improve over linear")
         
         # ============================================
         # Feature Importance
@@ -255,7 +271,7 @@ def train_xgboost():
         plt.xlabel('Importance')
         plt.title(f'{model_name} - Feature Importance')
         plt.tight_layout()
-        plt.savefig(PLOTS_DIR / f'phase2_{model_name.lower()}_feature_importance.png', 
+        plt.savefig(PLOTS_DIR / f'phase4_{model_name.lower()}_feature_importance.png', 
                    dpi=150, bbox_inches='tight')
         plt.close()
         
@@ -282,7 +298,7 @@ def train_xgboost():
         # Save Results
         # ============================================
         results = {
-            'phase': 'phase2_xgboost',
+            'phase': 'phase4_xgboost',
             'model': model_name,
             'horizon': TARGET_HORIZON,
             'n_features': len(FEATURE_COLS),
@@ -295,13 +311,14 @@ def train_xgboost():
             'baseline_r2': baseline_r2,
             'improvement_over_baseline': improvement,
             **train_metrics,
+            **val_metrics,
             **test_metrics
         }
         
         all_results.append(results)
         
         # Save model
-        model_path = MODELS_DIR / f'phase2_{model_name.lower()}.pkl'
+        model_path = MODELS_DIR / f'phase4_{model_name.lower()}.pkl'
         save_model(model, model_path)
         
         print("\n" + "-"*60)
@@ -314,8 +331,8 @@ def train_xgboost():
     results_df = pd.DataFrame(all_results)
     
     print("\nModel Comparison:")
-    comparison = results_df[['model', 'test_r2', 'improvement_over_baseline', 
-                            'train_time_sec']].copy()
+    comparison = results_df[['model', 'test_r2', 'test_directional_accuracy',
+                            'improvement_over_baseline', 'train_time_sec']].copy()
     comparison['test_r2'] = comparison['test_r2'] * 100
     comparison['improvement_over_baseline'] = comparison['improvement_over_baseline'] * 100
     comparison = comparison.sort_values('test_r2', ascending=False)
@@ -327,9 +344,11 @@ def train_xgboost():
     best_model = results_df.loc[best_idx, 'model']
     best_r2 = results_df.loc[best_idx, 'test_r2']
     best_time = results_df.loc[best_idx, 'train_time_sec']
+    best_dir_acc = results_df.loc[best_idx, 'test_directional_accuracy']
     
     print(f"\n🏆 Best Model: {best_model}")
     print(f"   Test R²: {best_r2*100:.4f}%")
+    print(f"   Directional Accuracy: {best_dir_acc:.2f}%")
     print(f"   Train time: {format_duration(best_time)}")
     print(f"   Improvement: {(best_r2-baseline_r2)*100:+.4f}% over baseline")
     
@@ -343,7 +362,7 @@ def train_xgboost():
         print(f"   📈 Gap: {(target_r2-best_r2)*100:.4f}%")
     
     # Save results
-    results_path = RESULTS_DIR / 'phase2_xgboost_results.csv'
+    results_path = RESULTS_DIR / 'phase4_xgboost_results.csv'
     results_df.to_csv(results_path, index=False)
     print(f"\n✅ Results saved to {results_path}")
     
@@ -363,6 +382,59 @@ def train_xgboost():
         print("3. Consider feature engineering for further gains")
     
     print_section("COMPLETE")
+    
+    # ============================================
+    # Cross-Phase Comparison
+    # ============================================
+    print_section("Cross-Phase Comparison")
+    
+    # Extract best R² from each phase
+    phase_r2 = {}
+    
+    # Phase 1
+    try:
+        phase1_results = pd.read_csv('results/phase1_linear_results.csv')
+        phase1_best = phase1_results[phase1_results['horizon'] == TARGET_HORIZON].iloc[0]
+        phase_r2['Phase 1 (Linear)'] = phase1_best['test_r2'] * 100
+        print(f"Phase 1 (Linear):           {phase1_best['test_r2']*100:.4f}%")
+    except Exception as e:
+        print(f"Phase 1 (Linear):           Not found")
+    
+    # Phase 2
+    try:
+        phase2_results = pd.read_csv('results/phase2_randomforest_optimized_results.csv')
+        phase2_best = phase2_results.loc[phase2_results['test_r2'].idxmax()]
+        phase_r2['Phase 2 (Random Forest)'] = phase2_best['test_r2'] * 100
+        print(f"Phase 2 (Random Forest):    {phase2_best['test_r2']*100:.4f}%")
+    except Exception as e:
+        print(f"Phase 2 (Random Forest):    Not found")
+    
+    # Phase 3
+    try:
+        phase3_results = pd.read_csv('results/phase3_gradientboosting_results.csv')
+        phase3_best = phase3_results.loc[phase3_results['test_r2'].idxmax()]
+        phase_r2['Phase 3 (Gradient Boosting)'] = phase3_best['test_r2'] * 100
+        print(f"Phase 3 (Gradient Boosting): {phase3_best['test_r2']*100:.4f}%")
+    except Exception as e:
+        print(f"Phase 3 (Gradient Boosting): Not found")
+    
+    # Phase 4 (current)
+    phase_r2['Phase 4 (XGBoost)'] = best_r2 * 100
+    print(f"Phase 4 (XGBoost):          {best_r2*100:.4f}%")
+    
+    # Summary
+    if len(phase_r2) > 1:
+        print("\n--- Summary ---")
+        best_phase = max(phase_r2, key=phase_r2.get)
+        best_phase_r2 = phase_r2[best_phase]
+        print(f"🏆 Best Overall: {best_phase} with R² = {best_phase_r2:.4f}%")
+        
+        # Calculate improvements
+        if 'Phase 1 (Linear)' in phase_r2:
+            baseline = phase_r2['Phase 1 (Linear)']
+            current = phase_r2['Phase 4 (XGBoost)']
+            improvement = current - baseline
+            print(f"   Phase 4 vs Phase 1: {improvement:+.4f}% ({(improvement/baseline)*100:+.1f}%)")
     
     return results_df
 
