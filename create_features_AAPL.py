@@ -27,14 +27,19 @@ df['spread_pct'] = df['spread_usd'] / df['mid_price_usd']
 # ============================================
 print("2. Depth imbalance features...")
 
-# Imbalance at each level
-df['imbalance_0'] = (df['bid_sz_0'] - df['ask_sz_0']) / (df['bid_sz_0'] + df['ask_sz_0'])
-df['imbalance_1'] = (df['bid_sz_1'] - df['ask_sz_1']) / (df['bid_sz_1'] + df['ask_sz_1'])
-df['imbalance_2'] = (df['bid_sz_2'] - df['ask_sz_2']) / (df['bid_sz_2'] + df['ask_sz_2'])
+# CRITICAL FIX: Convert uint32 to float to prevent underflow
+df['imbalance_0'] = (df['bid_sz_0'].astype(float) - df['ask_sz_0'].astype(float)) / \
+                    (df['bid_sz_0'].astype(float) + df['ask_sz_0'].astype(float))
+
+df['imbalance_1'] = (df['bid_sz_1'].astype(float) - df['ask_sz_1'].astype(float)) / \
+                    (df['bid_sz_1'].astype(float) + df['ask_sz_1'].astype(float))
+
+df['imbalance_2'] = (df['bid_sz_2'].astype(float) - df['ask_sz_2'].astype(float)) / \
+                    (df['bid_sz_2'].astype(float) + df['ask_sz_2'].astype(float))
 
 # Cumulative imbalance across all levels
-total_bid = df['bid_sz_0'] + df['bid_sz_1'] + df['bid_sz_2']
-total_ask = df['ask_sz_0'] + df['ask_sz_1'] + df['ask_sz_2']
+total_bid = df['bid_sz_0'].astype(float) + df['bid_sz_1'].astype(float) + df['bid_sz_2'].astype(float)
+total_ask = df['ask_sz_0'].astype(float) + df['ask_sz_1'].astype(float) + df['ask_sz_2'].astype(float)
 df['cumulative_imbalance'] = (total_bid - total_ask) / (total_bid + total_ask)
 
 # ============================================

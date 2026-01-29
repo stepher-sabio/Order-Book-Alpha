@@ -44,7 +44,7 @@ USE_CV = False  # Set to True to enable CV (slower but more robust)
 CV_SPLITS = 3
 
 # Target horizon to focus on
-TARGET_HORIZON = 'return_50ms'  # Start with shortest (hardest) horizon
+TARGET_HORIZON = 'return_500ms'  
 
 # ============================================
 # Main Training Function
@@ -205,9 +205,10 @@ def train_linear_models():
     print_section("PHASE 1 SUMMARY")
     
     print("\nModel Comparison (Test Set):")
-    comparison = results_df[['model', 'test_r2', 'test_mae_bps', 'test_direction_acc', 'train_time_sec']].copy()
+    comparison = results_df[['model', 'test_r2', 'test_mae_bps', 'test_direction_acc_nonzero', 'test_pct_zeros', 'train_time_sec']].copy()
     comparison['test_r2'] = comparison['test_r2'] * 100  # Convert to percentage
-    comparison['test_direction_acc'] = comparison['test_direction_acc'] * 100
+    comparison['test_direction_acc_nonzero'] = comparison['test_direction_acc_nonzero'] * 100
+    comparison['test_pct_zeros'] = comparison['test_pct_zeros'] * 100
     comparison = comparison.sort_values('test_r2', ascending=False)
     
     print(comparison.to_string(index=False))

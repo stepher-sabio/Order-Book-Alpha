@@ -95,18 +95,32 @@ def evaluate_model(y_true, y_pred, set_name='Test'):
     mae_bps = mae * 10000
     rmse_bps = rmse * 10000
     
-    # Direction accuracy (sign prediction)
-    direction_acc = np.mean(np.sign(y_true) == np.sign(y_pred))
+    # Direction accuracy - ALL samples
+    direction_acc_all = np.mean(np.sign(y_true) == np.sign(y_pred))
+    
+    # Direction accuracy - NON-ZERO samples only (more meaningful)
+    nonzero_mask = y_true != 0
+    if nonzero_mask.sum() > 0:
+        direction_acc_nonzero = np.mean(
+            np.sign(y_true[nonzero_mask]) == np.sign(y_pred[nonzero_mask])
+        )
+    else:
+        direction_acc_nonzero = np.nan
     
     # Correlation
     correlation = np.corrcoef(y_true, y_pred)[0, 1]
+    
+    # Percentage of zeros in actual
+    pct_zeros = (y_true == 0).sum() / len(y_true)
     
     metrics = {
         f'{set_name}_r2': r2,
         f'{set_name}_mae_bps': mae_bps,
         f'{set_name}_rmse_bps': rmse_bps,
-        f'{set_name}_direction_acc': direction_acc,
-        f'{set_name}_correlation': correlation
+        f'{set_name}_direction_acc_all': direction_acc_all,
+        f'{set_name}_direction_acc_nonzero': direction_acc_nonzero,
+        f'{set_name}_correlation': correlation,
+        f'{set_name}_pct_zeros': pct_zeros
     }
     
     return metrics
@@ -117,11 +131,13 @@ def print_metrics(metrics, set_name='Test'):
     set_name_lower = set_name.lower()
     
     print(f"\n{set_name} Metrics:")
-    print(f"  R²:              {metrics[f'{set_name_lower}_r2']*100:.4f}%")
-    print(f"  MAE:             {metrics[f'{set_name_lower}_mae_bps']:.3f} bps")
-    print(f"  RMSE:            {metrics[f'{set_name_lower}_rmse_bps']:.3f} bps")
-    print(f"  Direction Acc:   {metrics[f'{set_name_lower}_direction_acc']*100:.2f}%")
-    print(f"  Correlation:     {metrics[f'{set_name_lower}_correlation']:.4f}")
+    print(f"  R²:                    {metrics[f'{set_name_lower}_r2']*100:.4f}%")
+    print(f"  MAE:                   {metrics[f'{set_name_lower}_mae_bps']:.3f} bps")
+    print(f"  RMSE:                  {metrics[f'{set_name_lower}_rmse_bps']:.3f} bps")
+    print(f"  Direction Acc (all):   {metrics[f'{set_name_lower}_direction_acc_all']*100:.2f}%")
+    print(f"  Direction Acc (≠0):    {metrics[f'{set_name_lower}_direction_acc_nonzero']*100:.2f}%")
+    print(f"  Correlation:           {metrics[f'{set_name_lower}_correlation']:.4f}")
+    print(f"  % Zeros:               {metrics[f'{set_name_lower}_pct_zeros']*100:.2f}%")
 
 # ============================================
 # Cross-Validation
