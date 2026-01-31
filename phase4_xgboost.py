@@ -402,7 +402,7 @@ def train_xgboost():
     
     # Phase 2
     try:
-        phase2_results = pd.read_csv('results/phase2_randomforest_optimized_results.csv')
+        phase2_results = pd.read_csv('results/phase2_randomforest_results.csv')
         phase2_best = phase2_results.loc[phase2_results['test_r2'].idxmax()]
         phase_r2['Phase 2 (Random Forest)'] = phase2_best['test_r2'] * 100
         print(f"Phase 2 (Random Forest):    {phase2_best['test_r2']*100:.4f}%")

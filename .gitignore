@@ -2,3 +2,4 @@ Data/
 *.dbn.zst
 *.dbn
 cleaned_data/
+models/

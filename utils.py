@@ -1,5 +1,6 @@
 """
 utils.py - Shared utilities for order book modeling
+UPDATED: 32 features (14 core + 7 elective + 11 research-backed)
 """
 
 import pandas as pd
@@ -10,33 +11,57 @@ import pickle
 from pathlib import Path
 
 # ============================================
-# Constants
+# Feature Configuration (32 features total)
 # ============================================
-FEATURE_COLS = [
-    # Original features (14)
-    'spread_bps', 'mid_price_usd', 'spread_pct',
-    'imbalance_0', 'imbalance_1', 'imbalance_2', 'cumulative_imbalance',
-    'momentum_10', 'momentum_20', 'momentum_50',
-    'volatility_10', 'volatility_20', 'volatility_50',
-    'total_volume_top',
-    # Advanced imbalance (4)
-    'volume_weighted_imb', 'imbalance_change', 'persistent_imbalance', 'imbalance_volatility',
-    # Spread dynamics (3)
-    'spread_change', 'spread_zscore', 'spread_vol_ratio',
-    # Interactions (3)
-    'imb_vol_interaction', 'imb_mom_interaction', 'spread_imb_interaction',
-    # Book shape (2)
-    'depth_ratio', 'depth_ratio_change',
-    # Microstructure (2)
-    'bid_slope', 'ask_slope'
+
+CORE_FEATURES = [
+    # Price & Spread (2)
+    'spread_bps', 'mid_price_usd',
+    # Imbalance (2)
+    'imbalance_0', 'cumulative_imbalance',
+    # Momentum (3)
+    'momentum_5', 'momentum_10', 'momentum_20',
+    # Volatility (2)
+    'volatility_10', 'volatility_20',
+    # Order Flow (2)
+    'microprice_mom', 'flow_0',
+    # Book Shape (3)
+    'bid_slope', 'ask_slope', 'total_depth'
 ]
+
+ELECTIVE_FEATURES = [
+    # Advanced Imbalance (2)
+    'imbalance_change', 'persistent_imbalance',
+    # Spread Dynamics (2)
+    'spread_change', 'spread_vol_ratio',
+    # Multi-scale (1)
+    'vol_ratio',
+    # Interactions (2)
+    'imb_vol_interaction', 'spread_mom_interaction'
+]
+
+RESEARCH_FEATURES = [
+    # Cont et al. (2014) - Multi-level & OFI
+    'imbalance_1', 'imbalance_2', 'ofi_simple',
+    # Spread quality
+    'spread_volatility', 'spread_depth_ratio',
+    # Hasbrouck (2009) - Effective spread
+    'effective_spread',
+    # Dynamics
+    'price_acceleration', 'volume_acceleration',
+    # Alignment
+    'momentum_alignment'
+]
+
+# Use all features by default
+FEATURE_COLS = CORE_FEATURES + ELECTIVE_FEATURES + RESEARCH_FEATURES
 
 TARGET_HORIZONS = ['return_50ms', 'return_100ms', 'return_200ms', 'return_500ms']
 
 # ============================================
 # Data Loading
 # ============================================
-def load_data(filepath='featured_AAPL.parquet_v2', sample_size=None):
+def load_data(filepath='cleaned_data/featured_AAPL.parquet', sample_size=None):
     """
     Load featured dataset
     
@@ -86,14 +111,14 @@ def time_based_split(X, y, test_size=0.2):
 # ============================================
 # Evaluation Metrics
 # ============================================
-def evaluate_model(y_true, y_pred, set_name='Test'):
+def evaluate_model(y_true, y_pred, set_name='test'):
     """
     Calculate comprehensive evaluation metrics
     
     Args:
         y_true: Actual values
         y_pred: Predicted values
-        set_name: Name for display (e.g., 'Train', 'Test')
+        set_name: Name for display (e.g., 'train', 'test')
     
     Returns:
         Dictionary of metrics
@@ -109,7 +134,7 @@ def evaluate_model(y_true, y_pred, set_name='Test'):
     # Direction accuracy - ALL samples
     direction_acc_all = np.mean(np.sign(y_true) == np.sign(y_pred))
     
-    # Direction accuracy - NON-ZERO samples only (more meaningful)
+    # Direction accuracy - NON-ZERO samples only
     nonzero_mask = y_true != 0
     if nonzero_mask.sum() > 0:
         direction_acc_nonzero = np.mean(
