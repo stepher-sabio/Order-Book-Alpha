@@ -13,11 +13,22 @@ from pathlib import Path
 # Constants
 # ============================================
 FEATURE_COLS = [
+    # Original features (14)
     'spread_bps', 'mid_price_usd', 'spread_pct',
     'imbalance_0', 'imbalance_1', 'imbalance_2', 'cumulative_imbalance',
     'momentum_10', 'momentum_20', 'momentum_50',
     'volatility_10', 'volatility_20', 'volatility_50',
-    'total_volume_top'
+    'total_volume_top',
+    # Advanced imbalance (4)
+    'volume_weighted_imb', 'imbalance_change', 'persistent_imbalance', 'imbalance_volatility',
+    # Spread dynamics (3)
+    'spread_change', 'spread_zscore', 'spread_vol_ratio',
+    # Interactions (3)
+    'imb_vol_interaction', 'imb_mom_interaction', 'spread_imb_interaction',
+    # Book shape (2)
+    'depth_ratio', 'depth_ratio_change',
+    # Microstructure (2)
+    'bid_slope', 'ask_slope'
 ]
 
 TARGET_HORIZONS = ['return_50ms', 'return_100ms', 'return_200ms', 'return_500ms']
@@ -25,7 +36,7 @@ TARGET_HORIZONS = ['return_50ms', 'return_100ms', 'return_200ms', 'return_500ms'
 # ============================================
 # Data Loading
 # ============================================
-def load_data(filepath='featured_AAPL.parquet', sample_size=None):
+def load_data(filepath='featured_AAPL.parquet_v2', sample_size=None):
     """
     Load featured dataset
     

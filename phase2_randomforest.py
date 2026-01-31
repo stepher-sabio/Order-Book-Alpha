@@ -422,7 +422,7 @@ def train_random_forest_optimized():
         all_results.append(results)
         
         # Save model
-        model_path = MODELS_DIR / f'phase2_{model_name.lower()}_ultra_optimized.pkl'
+        model_path = MODELS_DIR / f'phase2_{model_name.lower()}.pkl'
         save_model(model, model_path)
         
         # Clean up

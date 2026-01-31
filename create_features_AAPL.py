@@ -70,6 +70,38 @@ print("5. Liquidity features...")
 df['total_volume_top'] = df['bid_sz_0'] + df['ask_sz_0']
 
 # ============================================
+# Category 6: Advanced Features (8 features)
+# ============================================
+print("6. Advanced order book features...")
+
+# Volume-weighted imbalance
+df['volume_weighted_imb'] = (
+    (df['bid_sz_0'].astype(float) * df['bid_px_0'].astype(float) - 
+     df['ask_sz_0'].astype(float) * df['ask_px_0'].astype(float)) /
+    (df['bid_sz_0'].astype(float) * df['bid_px_0'].astype(float) + 
+     df['ask_sz_0'].astype(float) * df['ask_px_0'].astype(float) + 1e-10)
+)
+
+# Imbalance momentum
+df['imbalance_change'] = df['imbalance_0'] - df['imbalance_0'].shift(10)
+
+# Spread dynamics
+df['spread_change'] = df['spread_bps'] - df['spread_bps'].shift(10)
+
+# Interaction features
+df['imb_vol_interaction'] = df['imbalance_0'] * df['volatility_10']
+df['imb_mom_interaction'] = df['imbalance_0'] * df['momentum_10']
+
+# Book shape
+total_bid = df['bid_sz_0'].astype(float) + df['bid_sz_1'].astype(float) + df['bid_sz_2'].astype(float)
+total_ask = df['ask_sz_0'].astype(float) + df['ask_sz_1'].astype(float) + df['ask_sz_2'].astype(float)
+df['depth_ratio'] = total_bid / (total_ask + 1e-10)
+df['depth_ratio_change'] = df['depth_ratio'] - df['depth_ratio'].shift(10)
+
+# Persistent imbalance
+df['persistent_imbalance'] = df['imbalance_0'].rolling(window=20).mean()
+
+# ============================================
 # Clean up and save
 # ============================================
 print("\n=== Cleaning up NaN values ===")

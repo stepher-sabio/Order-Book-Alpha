@@ -204,14 +204,14 @@ def train_linear_models():
     # Summary Comparison
     # ============================================
     print_section("PHASE 1 SUMMARY")
-    
+
     print("\nModel Comparison (Test Set):")
-    comparison = results_df[['model', 'test_r2', 'test_mae_bps', 'test_direction_acc_nonzero', 'test_pct_zeros', 'train_time_sec']].copy()
+    comparison = results_df[['model', 'test_r2', 'test_mae_bps', 'test_direction_acc_all', 'test_pct_zeros', 'train_time_sec']].copy()
     comparison['test_r2'] = comparison['test_r2'] * 100  # Convert to percentage
-    comparison['test_direction_acc_nonzero'] = comparison['test_direction_acc_nonzero'] * 100
+    comparison['test_direction_acc_all'] = comparison['test_direction_acc_all'] * 100
     comparison['test_pct_zeros'] = comparison['test_pct_zeros'] * 100
     comparison = comparison.sort_values('test_r2', ascending=False)
-    
+
     print(comparison.to_string(index=False))
     
     # Find best model
