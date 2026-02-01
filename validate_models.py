@@ -29,7 +29,7 @@ from scipy import stats
 # ============================================
 # Configuration
 # ============================================
-MODEL_PATH = 'models/phase2_rf_accurate.pkl'
+MODEL_PATH = 'models/phase4_xgb.pkl'
 PLOTS_DIR = Path('plots')
 PLOTS_DIR.mkdir(exist_ok=True)
 

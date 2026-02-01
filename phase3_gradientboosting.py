@@ -366,7 +366,7 @@ def train_gradient_boosting_enhanced():
         all_results.append(results)
         
         # Save model
-        model_path = MODELS_DIR / f'phase3_{model_name.lower()}.pkl'
+        model_path = MODELS_DIR / f'phase3_gb.pkl'
         save_model(model, model_path)
         
         # Clean up
@@ -428,7 +428,7 @@ def train_gradient_boosting_enhanced():
     
     # Phase 2
     try:
-        phase2_results = pd.read_csv('results/phase2_randomforest_enhanced_results.csv')
+        phase2_results = pd.read_csv('results/phase2_randomforest_results.csv')
         phase2_best = phase2_results.loc[phase2_results['test_r2'].idxmax()]
         print(f"Phase 2 (RF Enhanced):       {phase2_best['test_r2']*100:.4f}%")
     except FileNotFoundError:

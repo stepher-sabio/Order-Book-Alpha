@@ -205,7 +205,6 @@ def train_random_forest_enhanced():
         
         print(f"\n🌲 Building forest with {params['n_estimators']} trees...")
         print(f"📊 Max depth: {params['max_depth']} (vs original 6-10)")
-        print(f"💾 Using {'ALL' if params['max_samples'] is None else f\"{params['max_samples']*100:.0f}%\"} of training data")
         
         # ============================================
         # Train
@@ -372,7 +371,7 @@ def train_random_forest_enhanced():
         all_results.append(results)
         
         # Save model
-        model_path = MODELS_DIR / f'phase2_{model_name.lower()}.pkl'
+        model_path = MODELS_DIR / f'phase2_rf.pkl'
         save_model(model, model_path)
         
         # Clean up

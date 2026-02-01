@@ -178,6 +178,7 @@ def train_xgboost():
     # Train Models with Early Stopping
     # ============================================
     all_results = []
+    trained_models = {}
     
     for model_name, params in configs.items():
         print_section(f"Training: {model_name}")
@@ -317,9 +318,8 @@ def train_xgboost():
         
         all_results.append(results)
         
-        # Save model
-        model_path = MODELS_DIR / f'phase4_{model_name.lower()}.pkl'
-        save_model(model, model_path)
+        # Store model for later (save only the best after comparison)
+        trained_models[model_name] = model
         
         print("\n" + "-"*60)
     
@@ -351,6 +351,11 @@ def train_xgboost():
     print(f"   Directional Accuracy: {best_dir_acc:.2f}%")
     print(f"   Train time: {format_duration(best_time)}")
     print(f"   Improvement: {(best_r2-baseline_r2)*100:+.4f}% over baseline")
+    
+    # Save only the best model
+    model_path = MODELS_DIR / 'phase4_xgb.pkl'
+    save_model(trained_models[best_model], model_path)
+    print(f"✅ Best model saved to {model_path}")
     
     # Target check
     target_r2 = 0.014
